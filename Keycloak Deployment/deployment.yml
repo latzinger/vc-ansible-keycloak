@@ -1,0 +1,35 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+  vars_prompt:
+    - name: "vm_name"
+      prompt: "Enter VM Name"
+      private: no
+      default: "Keycloak (via ansible)"
+    - name: "vm_password"
+      prompt: "Enter VM Password"
+      private: no
+      default: "Pa$$w0rd"
+    - name: "vm_hostname"
+      prompt: "Enter VM Hostname"
+      private: no
+      default: "keycloak-ansible"
+  roles:
+   - vcenter
+
+- hosts: vms
+  gather_facts: yes
+  become: yes
+  become_method: sudo
+  vars_prompt:
+    - name: "keycloak_admin_username"
+      prompt: "Enter Username for Keycloak Administrator"
+      private: no
+      default: "keycloak"
+    - name: "keycloak_admin_password"
+      prompt: "Enter Password for Keycloak Administrator"
+      private: no
+      default: "keycloak"
+  roles:
+   - keycloak

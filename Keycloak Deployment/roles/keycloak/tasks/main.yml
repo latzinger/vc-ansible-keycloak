@@ -1,0 +1,124 @@
+---
+- name: update apt cache
+  apt:
+    name: "*"
+    force_apt_get: yes
+    update_cache: yes
+    cache_valid_time: 3600
+    state: "latest"
+  become: yes
+
+- name: install keycloak prerequisites
+  apt:
+    name: "{{ packages }}"
+  vars:
+    packages:
+    - openjdk-11-jdk
+  become: yes
+
+- name: create local keycloak user
+  user: 
+    name: keycloak
+
+- name: create keycloak target directory
+  file: 
+    dest: "{{ keycloak_dir }}"
+    mode: 755
+    owner: keycloak
+    group: keycloak
+    state: directory
+
+- name: download keycloak  
+  get_url: 
+    url: "{{ keycloak_url }}"
+    dest: "{{ keycloak_dir }}"
+    validate_certs: no
+    owner: keycloak
+    group: keycloak
+  become: yes
+
+- name: unpack keycloak
+  unarchive: 
+    src: "{{ keycloak_dir }}/{{keycloak_archive}}"
+    dest: "{{ keycloak_dir }}"
+    group: keycloak
+    owner: keycloak
+    copy: no
+
+- name: keycloak systemd setup
+  template:
+      owner: root
+      group: root
+      mode: 0644
+      src: keycloak.service.j2
+      dest: /etc/systemd/system/keycloak.service
+  notify:
+    - reload systemd
+  become: yes
+
+- name: add firewall rules
+  command: ufw allow 8080,9990/tcp
+  become: yes
+
+- name: enable and start keycloak systemd service
+  service: 
+    name: keycloak
+    enabled: yes
+    state: started
+  become: yes
+
+- name: wait for server to be fully started
+  pause:
+    seconds: 20
+
+- name: create keycloak administrator account
+  shell: "{{ keycloak_jboss_home }}/bin/add-user-keycloak.sh -r master -u {{ keycloak_admin_username }} -p {{ keycloak_admin_password }}"
+
+- name: get access token
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:8080/auth/realms/master/protocol/openid-connect/token"
+    method: POST
+    headers:
+      Content-Type: "application/x-www-form-urlencoded"
+    body: "username={{ keycloak_admin_username }}&password={{ keycloak_admin_password }}&client_id=admin-cli&grant_type=password"
+    status_code: "200"
+    body_format: form-urlencoded
+    return_content: yes
+    validate_certs: no
+  become: yes
+  register: token
+
+- name: print authentication information
+  debug:
+    var: token
+
+- name: import realm
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:8080/auth/admin/realms?client_id=admin-cli&username={{ keycloak_admin_username }}&password={{ keycloak_admin_password }}&grant_type=password"
+    method: POST
+    headers:
+      Authorization: "{{ token.json.token_type }} {{ token.json.access_token }}"
+      Content-Type: "application/json"
+    body: "{{ lookup('file','demorealm.json') }}"
+    return_content: yes
+    status_code: "201"
+    body_format: json
+    validate_certs: no
+  become: yes
+  register: response
+
+- name: print response
+  debug:
+    var: response
+
+# initialize using local scripts on host 
+
+#
+#- name: admin cli configuration
+#  shell: "{{ keycloak_jboss_home }}/bin/kcadm.sh config credentials --server http://{{ ansible_default_ipv4.address }}:8080/auth --realm master --user {{ keycloak_admin_username }} --password {{ keycloak_admin_password }} "
+#
+#- name: create test realm
+#  shell: "{{ keycloak_jboss_home }}/bin/kcadm.sh create realms -s realm=demorealm -s enabled=true -o"
+#
+#- name: create test user
+#  shell: "{{ keycloak_jboss_home }}/bin/kcadm.sh create users -s username=testuser -s enabled=true -r demorealm"
