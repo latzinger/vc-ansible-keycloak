@@ -1,8 +1,12 @@
 # vc-ansible-keycloak
 
-Playbook for deploying a ova template over VMware vCenter (vSphere) and deploying keycloak.
-Default Image: bionic-server-cloudimg-amd64
-The Image will be downloaded by ansible playbook. Keycloak Administrator and a Demo Realm will be generated.
+This is an Ansible Project for deploying a Ubuntu Bionic Server on the VMware vCenter.
+Afterwars installing a running Keycloak, creating an Administrator Account and importing a Demo Realm using the Keylocak API.
+
+* Deploying a Ubuntu Bionic Server on the vCenter
+* Installing Keycloak
+* Adding Keycloak Administrator
+* Importing a Demo Realm (using local json file)
 
 Required Variables
 Path: roles/vcenter/defaults/main.yml
