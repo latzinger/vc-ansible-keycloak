@@ -31,5 +31,17 @@
       prompt: "Enter Password for Keycloak Administrator"
       private: no
       default: "keycloak"
+    - name: "demo_realm"
+      prompt: "Enter Name for Demo Realm"
+      private: no
+      default: "demorealm"   
+    - name: "demo_user"
+      prompt: "Enter Username for Keycloak Demo User"
+      private: no
+      default: "demouser"
+    - name: "demo_user_password"
+      prompt: "Enter Password for Keycloak Demo User"
+      private: no
+      default: "demouser"      
   roles:
    - keycloak
