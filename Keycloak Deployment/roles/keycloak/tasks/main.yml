@@ -92,6 +92,13 @@
   debug:
     var: token
 
+- name: create realm json
+  template: 
+    src: demorealm.j2 
+    dest: realm.json
+  delegate_to: localhost
+  become: no
+
 - name: import realm
   uri:
     url: "http://{{ ansible_default_ipv4.address }}:8080/auth/admin/realms?client_id=admin-cli&username={{ keycloak_admin_username }}&password={{ keycloak_admin_password }}&grant_type=password"
@@ -99,7 +106,33 @@
     headers:
       Authorization: "{{ token.json.token_type }} {{ token.json.access_token }}"
       Content-Type: "application/json"
-    body: "{{ lookup('file','demorealm.json') }}"
+    body: "{{ lookup('file','realm.json') }}"
+    return_content: yes
+    status_code: "201"
+    body_format: json
+    validate_certs: no
+  become: yes
+  register: response
+
+- name: print response
+  debug:
+    var: response
+
+- name: create user json
+  template: 
+    src: demouser.j2 
+    dest: user.json
+  delegate_to: localhost
+  become: no
+
+- name: import user
+  uri:
+    url: "http://{{ ansible_default_ipv4.address }}:8080/auth/admin/realms/{{ demo_realm }}/users?client_id=admin-cli&username={{ keycloak_admin_username }}&password={{ keycloak_admin_password }}&grant_type=password"
+    method: POST
+    headers:
+      Authorization: "{{ token.json.token_type }} {{ token.json.access_token }}"
+      Content-Type: "application/json"
+    body: "{{ lookup('file','user.json') }}"
     return_content: yes
     status_code: "201"
     body_format: json
@@ -118,7 +151,7 @@
 #  shell: "{{ keycloak_jboss_home }}/bin/kcadm.sh config credentials --server http://{{ ansible_default_ipv4.address }}:8080/auth --realm master --user {{ keycloak_admin_username }} --password {{ keycloak_admin_password }} "
 #
 #- name: create test realm
-#  shell: "{{ keycloak_jboss_home }}/bin/kcadm.sh create realms -s realm=demorealm -s enabled=true -o"
+#  shell: "{{ keycloak_jboss_home }}/bin/kcadm.sh create realms -s realm={{ demo_realm }} -s enabled=true -o"
 #
 #- name: create test user
-#  shell: "{{ keycloak_jboss_home }}/bin/kcadm.sh create users -s username=testuser -s enabled=true -r demorealm"
+#  shell: "{{ keycloak_jboss_home }}/bin/kcadm.sh create users -s username=testuser -s enabled=true -r {{ demo_realm }}"
